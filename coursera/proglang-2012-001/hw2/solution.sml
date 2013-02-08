@@ -30,7 +30,7 @@ end
 
 (* problem 1d *)
 type fullname = {first:string, middle:string, last:string}
-fun similar_names([], _) = []
+fun similar_names([], x) = [x]
   | similar_names(lsts, {first=fst, middle=mid, last=las}:fullname) = 
       let fun gen_names([], _) = []
             | gen_names(x::xs', s) = {first=x, middle=mid, last=las}::gen_names(xs', s)
@@ -66,7 +66,7 @@ fun card_value(c:card) =
 
 (* problem 2c *)
 fun remove_card([], _, e) = raise e
-  | remove_card(x::cs', c, e) = if x=c then cs' else x::remove_card(cs', c, e)
+  | remove_card(x::cs':(card list), c:card, e) = if x=c then cs' else x::remove_card(cs', c, e)
 
 (* problem 2d *)
 fun all_same_color([]) = true
@@ -104,9 +104,57 @@ let
 in score(simulate([], cards, moves), goal)
 end
         
+(* problem 3a *)
+(* if there are n aces, then do a O(n) enumaration. *)
+fun score_challenge(cs, g) =
+let 
+  val same = all_same_color(cs)
+  fun sum_to_score(s) = 
+    let val pscore = if s>g then 3*(s-g) else g-s
+    in if same then pscore div 2 else pscore
+    end
+  val vsum = sum_cards(cs)
+  fun change_aces([], _) = sum_to_score(vsum)
+    | change_aces((_,r)::cs', x) = 
+        if r=Ace
+        then Int.min(sum_to_score(vsum-10*(x+1)), change_aces(cs',x+1))
+        else change_aces(cs',x)
+in
+  change_aces(cs, 0)
+end
 
+fun officiate_challenge(cards, moves, goal) = 
+let 
+  fun simulate(hs, _, []) = hs
+    | simulate(hs, cs, (Discard m)::ms') = 
+        simulate(remove_card(hs, m, IllegalMove), cs, ms')
+    | simulate(hs, [], (Draw)::ms') = hs
+    | simulate(hs, c::cs', (Draw)::ms') = 
+        if sum_cards(c::hs) > goal 
+        then c::hs
+        else simulate(c::hs, cs', ms')
+in score_challenge(simulate([], cards, moves), goal)
+end
 
-
+(* problem 3b *)
+fun careful_player(cards, goal) =
+let 
+  fun cheat(ts, h::hs', c::cs') = 
+        if score(c::ts@hs', goal)=0 then SOME h
+        else cheat(h::ts, hs', c::cs')
+    | cheat(_) = NONE
+  fun choose_move(_, []) = []
+    | choose_move(hs, c::cs') = 
+        if score(hs, goal)=0 then []
+        else case cheat([], hs, c::cs') of
+                  SOME x => [Discard(x), Draw]
+                | NONE => if sum_cards(hs)+10<goal then (Draw)::choose_move(c::hs, cs')
+                          else []
+in
+  choose_move([], cards)
+end
+                            
+       
 
 
 
