@@ -122,50 +122,88 @@ fun first_match v ps =
 (* challenge problem *)
 fun typecheck_patterns (dts, ps) =
 let
-  fun merge_typ (t1,t2) = 
-    if t1=Anything then SOME t2
-    else if t2=Anything then SOME t1
-    else if t1<>t2 then None
-    else SOME t1
+  fun get_dt_by_constructor c =
+    List.find (fn(x,_,_) => x=c) dts
+
+  (* check if pattern p matches typ t *)
+  fun check_pat_match_typ (p,t) =
+    case (p,t) of
+         (_, Anything) => true
+       (* "Variable" unknown. suppose we have:
+       * datatype: MyDt = Con of tupleT([IntT])
+       * and pattern: ConstructorP("Con", Variable "x")
+       * should it return SOME Datatype "MyDt" or NONE? *)
+       (*| (Variable _, _) => true *) 
+       | (UnitP, UnitT) => true
+       | (ConstP _, IntT) => true
+       | (TupleP ps, TupleT ts) => 
+           ((List.foldl (fn(x,ans) => ans andalso check_pat_match_typ(x)) 
+                true (ListPair.zipEq(ps,ts)))
+           handle UnequalLengths => false)
+       | (ConstructorP(s1,p1), Datatype s2) =>
+           (case get_dt_by_constructor(s1) of
+                 NONE => false
+               | SOME (c,d,vt) => d=s2 andalso check_pat_match_typ (p1,vt))
+       | _ => false
     
   (* Map patterns to the most strict typs *)
   fun pat_to_typ p = 
+  let 
+    (* map [l1,l2,..] to SOME([f(l1),f(l2),..]), 
+    * or NONE if any f(ln) is NONE *)
+    fun map_all_or_none f l = 
+      List.foldr (fn(x,lst) => 
+        case lst of 
+             NONE => NONE 
+           | SOME lst => case f x of 
+                              NONE => NONE 
+                            | SOME y => SOME(y::lst)) (SOME []) l
+  in
     case p of
          Wildcard => SOME Anything
        | Variable _ => SOME Anything
        | UnitP => SOME UnitT
        | ConstP _ => SOME IntT
-       | TupleP xs => List.foldr (fn(p,lst) => (pat_to_typ p)::lst) [] xs
-       | ConstructorP (s1,p1) => 
-           case (List.find (fn(foo,_,_) => foo=s1) dts) of
+       | TupleP ps => (case map_all_or_none pat_to_typ ps of
+                           NONE => NONE
+                         | SOME ts => SOME (TupleT ts))
+       | ConstructorP (s1,p1) =>
+           case get_dt_by_constructor s1 of
                 NONE => NONE
-              | SOME (foo,bar,ty) => 
-                  let 
-                    val ok = SOME (Datatype bar)
-                  in case (p1,ty) of
-                          (Wildcard, Anything) => ok
-                        | (Variable, Anything) => ok
-                        | (UnitP, UnitT) => ok
-                        | (ConstP _, IntT) => ok
-                        | (TupleP ps, TupleT ts) => 
-                            if List.length(ps)<>List.length(ts)
-                            then Anything
-                            else if ts<>(List.map merge_typ (List.zip(List.map
-                            pat_to_typ ps, ts)))
-                                 then Anything
-                                 else ts
-                        | _ => Anything
-                  end
+              | SOME (c,d,vt) => if check_pat_match_typ (p1,vt) 
+                                 then SOME (Datatype d)
+                                 else NONE
+  end
+  (* Merge two typs. If can't, return NONE *)
+  fun merge_two_typs (t1, t2) =
+    case (t1, t2) of
+         (NONE, _) => NONE
+       | (_, NONE) => NONE
+       | (SOME Anything, SOME _) => t2
+       | (SOME _, SOME Anything) => t1
+       | (SOME(TupleT ts1), SOME(TupleT ts2)) => 
+           (* t1 and t2 should have same length *)
+           if List.length(ts1)<> List.length(ts2) then NONE
+           else 
+             let 
+               val ts = List.map (fn(t1,t2) => merge_two_typs(SOME t1, SOME t2))
+                  (ListPair.zip(ts1,ts2))
+             in
+               case List.find (fn NONE=>true|_=>false) ts of
+                    NONE => SOME(TupleT(List.map valOf ts))
+                  | _ => NONE
+             end
+       | _ => if t1=t2 then t1 else NONE
+
   (* Generate the strict typ that covers all typs generated before. *)
-  fun merge_all_typs (ty::tys') =
-        SOME(List.foldl (fn(t,acc) => List.map merge_typ (List.zip(t,acc))) ty
-        tys')
-    | merge_all_typs _ => NONE
+  fun merge_all_typs [] = NONE
+    | merge_all_typs (ty::tys') =
+      List.foldl (fn(x,ans) => 
+      case ans of 
+           NONE => NONE
+         | _ => merge_two_typs (x,ans)) ty tys'
 in
-  merge_all_typs ()
-
-
-
-
+  merge_all_typs (List.map pat_to_typ ps)
+end
 
 

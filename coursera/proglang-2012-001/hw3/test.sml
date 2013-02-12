@@ -1,3 +1,4 @@
+(*
 val s1 = ["Abdfdh", "dbksdf", "i", "a", "bDFB", "BdXXyz"]
 val test1 = only_capitals(s1)
 val test2 = longest_string1(s1)
@@ -40,4 +41,32 @@ val val12 = Tuple[Unit, Constructor("ss",Const(66))]
 val pat12 = [UnitP,
 TupleP[UnitP,ConstructorP("ss",ConstP(55))],TupleP[Variable("tt"),ConstructorP("ss",ConstP(66))]]
 val test12 = first_match val12 pat12
+*)
+
+(* test problem 13 *)
+val r1 = ("MyConstructor", "my_datatype", TupleT[Anything,IntT,Datatype
+"my_subdt"])
+val r2 = ("MyCon2", "my_datatype", UnitT)
+val r3 = ("MySubCon", "my_subdt", Datatype "my_datatype")
+
+val p1 = ConstructorP ("MyConstructor", TupleP[ConstP 4, ConstP 99,
+ConstructorP("MySubCon", ConstructorP("MyCon2", UnitP))])
+val p2 = ConstructorP ("MyConstructor", TupleP[ConstP 4, ConstP 99,
+ConstructorP("MySubCon", ConstructorP("MyCon2", TupleP[]))])
+val p3 = ConstructorP ("MyConstructor", TupleP[ConstP 4, Variable "x",
+ConstructorP("MySubCon", ConstructorP("MyCon2", TupleP[]))])
+val p4 = Wildcard
+val p5 = TupleP[Wildcard,Wildcard]
+val p6 = TupleP[Wildcard,TupleP[UnitP,TupleP[TupleP[ConstP 77],TupleP[Wildcard]],Wildcard]]
+val p7 = TupleP[UnitP, ConstP 77,Wildcard]
+val test13 = typecheck_patterns([r1,r2,r3],[p1])
+val test13_2 = typecheck_patterns([r1,r2,r3],[p2])
+val test13_3 = typecheck_patterns([r1,r2,r3],[p3])
+val test13_4 = typecheck_patterns([r1,r2,r3],[p1,p4])
+val test13_5 = typecheck_patterns([], [p5,p6])
+val test13_6 = typecheck_patterns([], [p4,p5])
+val test13_7 = typecheck_patterns([], [p4,p7])
+val test13_8 = typecheck_patterns([], [p5])
+val test13_9 = typecheck_patterns([], [p6])
+val test13_10 = typecheck_patterns([], [p4,p7,p5])
 
