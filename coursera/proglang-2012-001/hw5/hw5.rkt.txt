@@ -102,7 +102,7 @@
 	   (if (closure? cl)
 	     (letrec ([cfun (closure-fun cl)]
 		      [s1 (fun-nameopt cfun)]
-		      [benv (cons (cons (fun-formal cfun) (eval-under-env arg env))
+		      [benv (cons (cons (fun-formal cfun) arg)
 				  (closure-env cl))])
 	       (eval-under-env (fun-body cfun)
 			       (cond 
@@ -297,7 +297,7 @@
 	   (if (closure? cl)
 	     (letrec ([cfun (closure-fun cl)]
 		      [s1 (fun-challenge-nameopt cfun)]
-		      [benv (cons (cons (fun-challenge-formal cfun) (eval-under-env-c arg env))
+		      [benv (cons (cons (fun-challenge-formal cfun) arg)
 				  (closure-env cl))])
 	       (eval-under-env-c (fun-challenge-body cfun)
 				 (cond 
